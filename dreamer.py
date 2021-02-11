@@ -136,7 +136,7 @@ class Dreamer(tools.Module):
     embed, post, feat, kl, mets = self._wm.train(data)
     metrics.update(mets)
     start = post
-    if self._config.pred_discount:  # Last step could be terminal.
+    if 'discount' in self._config.grad_heads:  # Last step could be terminal.
       start = {k: v[:, :-1] for k, v in post.items()}
       embed, feat, kl = embed[:, :-1], feat[:, :-1], kl[:, :-1]
     reward = lambda f, s, a: self._wm.heads['reward'](f).mode()
@@ -256,7 +256,8 @@ def main(logdir, config):
   train_envs = [make('train') for _ in range(config.envs)]
   eval_envs = [make('eval') for _ in range(config.envs)]
   acts = train_envs[0].action_space
-  config.num_actions = acts.n if hasattr(acts, 'n') else acts.shape[0]
+  if not config.num_actions:
+    config.num_actions = acts.n if hasattr(acts, 'n') else acts.shape[0]
 
   prefill = max(0, config.prefill - count_steps(config.traindir))
   print(f'Prefill dataset ({prefill} steps).')

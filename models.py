@@ -11,21 +11,21 @@ class WorldModel(tools.Module):
     self._step = step
     self._config = config
     self.encoder = networks.ConvEncoder(
-        config.cnn_depth, config.act, config.encoder_kernels)
+        config.cnn_depth, config.act, config.encoder_kernels, config.encoder_strides)
     self.dynamics = networks.RSSM(
         config.dyn_stoch, config.dyn_deter, config.dyn_hidden,
         config.dyn_input_layers, config.dyn_output_layers, config.dyn_shared,
         config.dyn_discrete, config.act, config.dyn_mean_act,
         config.dyn_std_act, config.dyn_min_std, config.dyn_cell)
     self.heads = {}
-    channels = (1 if config.atari_grayscale else 3)
+    channels = (1 if config.atari_grayscale else config.channels)
     shape = config.size + (channels,)
     self.heads['image'] = networks.ConvDecoder(
         config.cnn_depth, config.act, shape, config.decoder_kernels,
-        config.decoder_thin)
+        config.decoder_thin, config.decoder_strides)
     self.heads['reward'] = networks.DenseHead(
         [], config.reward_layers, config.units, config.act)
-    if config.pred_discount:
+    if 'discount' in config.grad_heads:
       self.heads['discount'] = networks.DenseHead(
           [], config.discount_layers, config.units, config.act, dist='binary')
     for name in config.grad_heads:
