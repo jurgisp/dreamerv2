@@ -270,12 +270,14 @@ def main(logdir, config):
 
     print(f'Start training loop ({agent._step.numpy().item()}/{int(config.steps)} steps done)...')
     state = None
+    should_eval = tools.Every(config.eval_every)
     while agent._step.numpy().item() < config.steps:
+        step = agent._step.numpy().item()
 
-        # TODO: check config.eval_every
-        if not config.offline_evaldir:
-            video_pred = agent._wm.video_pred(next(eval_dataset))
-            logger.video('eval_openl', video_pred)
+        if should_eval(step):
+            if not config.offline_evaldir:
+                video_pred = agent._wm.video_pred(next(eval_dataset))
+                logger.video('eval_openl', video_pred)
             eval_policy = functools.partial(agent, training=False)
             tools.simulate(eval_policy, eval_envs, episodes=1)
             logger.write()
