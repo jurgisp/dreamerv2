@@ -33,8 +33,6 @@ class Dreamer(tools.Module):
     self._config = config
     self._logger = logger
     self._float = prec.global_policy().compute_dtype
-    self._should_log = tools.Every(config.log_every)
-    self._should_train = tools.Every(config.train_every)
     self._should_pretrain = tools.Once()
     self._should_reset = tools.Every(config.reset_every)
     self._should_expl = tools.Until(int(
@@ -69,21 +67,8 @@ class Dreamer(tools.Module):
     if state is not None and reset.any():
       mask = tf.cast(1 - reset, self._float)[:, None]
       state = tf.nest.map_structure(lambda x: x * mask, state)
-    if training and self._should_train(step):
-      steps = (
-          self._config.pretrain if self._should_pretrain()
-          else self._config.train_steps)
-      for _ in range(steps):
-        self._train(next(self._dataset))
-      if self._should_log(step):
-        for name, mean in self._metrics.items():
-          self._logger.scalar(name, float(mean.result()))
-          mean.reset_states()
-        openl = self._wm.video_pred(next(self._dataset))
-        self._logger.video('train_openl', openl)
-        self._logger.write(fps=True)
     action, state = self._policy(obs, state, training)
-    if training:
+    if training:  # TODO: should this go here, or train() ?
       self._step.assign_add(len(reset))
       self._logger.step = self._config.action_repeat \
           * self._step.numpy().item()
@@ -128,6 +113,19 @@ class Dreamer(tools.Module):
     else:
       return tf.clip_by_value(tfd.Normal(action, amount).sample(), -1, 1)
     raise NotImplementedError(self._config.action_noise)
+
+  def train(self):
+    steps = (
+        self._config.pretrain if self._should_pretrain()
+        else self._config.train_steps)
+    for _ in range(steps):
+      self._train(next(self._dataset))
+    for name, mean in self._metrics.items():
+      self._logger.scalar(name, float(mean.result()))
+      mean.reset_states()
+    openl = self._wm.video_pred(next(self._dataset))
+    self._logger.video('train_openl', openl)
+    self._logger.write(fps=True)
 
   @tf.function
   def _train(self, data):
@@ -259,11 +257,13 @@ def main(logdir, config):
   if not config.num_actions:
     config.num_actions = acts.n if hasattr(acts, 'n') else acts.shape[0]
 
-  prefill = max(0, config.prefill - count_steps(config.traindir))
-  print(f'Prefill dataset ({prefill} steps).')
-  random_agent = lambda o, d, s: ([acts.sample() for _ in d], s)
-  tools.simulate(random_agent, train_envs, prefill)
-  tools.simulate(random_agent, eval_envs, episodes=1)
+  if not config.offline_traindir:
+    prefill = max(0, config.prefill - count_steps(config.traindir))
+    print(f'Prefill dataset ({prefill} steps).')
+    random_agent = lambda o, d, s: ([acts.sample() for _ in d], s)
+    tools.simulate(random_agent, train_envs, prefill)
+  if not config.offline_evaldir:
+    tools.simulate(random_agent, eval_envs, episodes=1)
   logger.step = config.action_repeat * count_steps(config.traindir)
 
   print('Simulate agent.')
@@ -277,14 +277,24 @@ def main(logdir, config):
   state = None
   while agent._step.numpy().item() < config.steps:
     logger.write()
-    print('Start evaluation.')
-    video_pred = agent._wm.video_pred(next(eval_dataset))
-    logger.video('eval_openl', video_pred)
-    eval_policy = functools.partial(agent, training=False)
-    tools.simulate(eval_policy, eval_envs, episodes=1)
+
+    if not config.offline_evaldir:
+      print('Start evaluation.')
+      video_pred = agent._wm.video_pred(next(eval_dataset))
+      logger.video('eval_openl', video_pred)
+      eval_policy = functools.partial(agent, training=False)
+      tools.simulate(eval_policy, eval_envs, episodes=1)
+    else:
+      # TODO: offline evaluation
+      pass
+
     print('Start training.')
-    state = tools.simulate(agent, train_envs, config.eval_every, state=state)
+    if not config.offline_traindir:
+      state = tools.simulate(agent, train_envs, config.eval_every, state=state)
+    agent.train()
+
     agent.save(logdir / 'variables.pkl')
+
   for env in train_envs + eval_envs:
     try:
       env.close()
