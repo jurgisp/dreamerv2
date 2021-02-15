@@ -7,8 +7,6 @@ defaults:
   seed: 0
   steps: 1e7
   eval_every: 1e4
-  log_every: 1e4
-  reset_every: 0
   gpu_growth: True
   precision: 32
   debug: False
@@ -18,7 +16,7 @@ defaults:
   task: 'dmc_walker_walk'
   size: [64, 64]
   channels: 3
-  num_actions: 0
+  num_actions:
   envs: 1
   action_repeat: 2
   time_limit: 1000
@@ -121,7 +119,6 @@ atari:
   task: 'atari_pong'
   steps: 2e8
   eval_every: 1e5
-  log_every: 1e4
   prefill: 50000
   dataset_size: 2e6
   pretrain: 0
@@ -175,7 +172,6 @@ dmc:
   task: 'dmc_walker_walk'
   steps: 1e7
   eval_every: 1e4
-  log_every: 1e4
   prefill: 2500
   dataset_size: 0
   pretrain: 100

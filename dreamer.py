@@ -34,12 +34,12 @@ class Dreamer(tools.Module):
         self._logger = logger
         self._float = prec.global_policy().compute_dtype
         self._should_pretrain = tools.Once()
-        self._should_reset = tools.Every(config.reset_every)
         self._should_expl = tools.Until(int(
             config.expl_until / config.action_repeat))
         self._metrics = collections.defaultdict(tf.metrics.Mean)
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
+        self._logger.step = self._config.action_repeat * self._step.numpy().item()
         # Schedules.
         config.actor_entropy = (
             lambda x=config.actor_entropy: tools.schedule(x, self._step))
@@ -61,18 +61,15 @@ class Dreamer(tools.Module):
         self._train(next(self._dataset))
 
     def __call__(self, obs, reset, state=None, training=True):
-        step = self._step.numpy().item()
-        if self._should_reset(step):
-            state = None
         if state is not None and reset.any():
             mask = tf.cast(1 - reset, self._float)[:, None]
             state = tf.nest.map_structure(lambda x: x * mask, state)
         action, state = self._policy(obs, state, training)
-        if training:  # TODO: should this go here, or train() ?
-            self._step.assign_add(len(reset))
-            self._logger.step = self._config.action_repeat \
-                * self._step.numpy().item()
         return action, state
+
+    def inc_step(self, delta):
+        self._step.assign_add(delta)
+        self._logger.step = self._config.action_repeat * self._step.numpy().item()
 
     @tf.function
     def _policy(self, obs, state, training):
@@ -125,7 +122,6 @@ class Dreamer(tools.Module):
             mean.reset_states()
         openl = self._wm.video_pred(next(self._dataset))
         self._logger.video('train_openl', openl)
-        self._logger.write(fps=True)
 
     @tf.function
     def _train(self, data):
@@ -209,7 +205,6 @@ def process_episode(config, logger, mode, train_eps, eval_eps, episode):
     logger.scalar(f'{mode}_episodes', len(cache))
     if mode == 'eval' or config.expl_gifs:
         logger.video(f'{mode}_policy', video[None])
-    logger.write()
 
 
 def main(logdir, config):
@@ -218,7 +213,6 @@ def main(logdir, config):
     config.evaldir = config.evaldir or logdir / 'eval_eps'
     config.steps //= config.action_repeat
     config.eval_every //= config.action_repeat
-    config.log_every //= config.action_repeat
     config.time_limit //= config.action_repeat
     config.act = getattr(tf.nn, config.act)
 
@@ -236,8 +230,7 @@ def main(logdir, config):
     logdir.mkdir(parents=True, exist_ok=True)
     config.traindir.mkdir(parents=True, exist_ok=True)
     config.evaldir.mkdir(parents=True, exist_ok=True)
-    step = count_steps(config.traindir)
-    logger = tools.Logger(logdir, config.action_repeat * step)
+    logger = tools.Logger(logdir, 0)
 
     print('Create envs.')
     if config.offline_traindir:
@@ -257,16 +250,17 @@ def main(logdir, config):
     if not config.num_actions:
         config.num_actions = acts.n if hasattr(acts, 'n') else acts.shape[0]
 
-    if not config.offline_traindir:
-        prefill = max(0, config.prefill - count_steps(config.traindir))
-        print(f'Prefill dataset ({prefill} steps).')
+    if not config.offline_traindir and config.prefill > 0:
+        traindir_steps = count_steps(config.traindir)
+        prefill = max(0, config.prefill - traindir_steps)
+        print(f'Initial training data prefill ({config.prefill} steps, {traindir_steps} found)...')
         random_agent = lambda o, d, s: ([acts.sample() for _ in d], s)
         tools.simulate(random_agent, train_envs, prefill)
     if not config.offline_evaldir:
+        print(f'Initial eval data prefill (1 episodes)...')
         tools.simulate(random_agent, eval_envs, episodes=1)
-    logger.step = config.action_repeat * count_steps(config.traindir)
 
-    print('Simulate agent.')
+    print('Create agent...')
     train_dataset = make_dataset(train_eps, config)
     eval_dataset = iter(make_dataset(eval_eps, config))
     agent = Dreamer(config, logger, train_dataset)
@@ -274,24 +268,27 @@ def main(logdir, config):
         agent.load(logdir / 'variables.pkl')
         agent._should_pretrain._once = False
 
+    print(f'Start training loop ({agent._step.numpy().item()}/{int(config.steps)} steps done)...')
     state = None
     while agent._step.numpy().item() < config.steps:
-        logger.write()
 
+        # TODO: check config.eval_every
         if not config.offline_evaldir:
-            print('Start evaluation.')
             video_pred = agent._wm.video_pred(next(eval_dataset))
             logger.video('eval_openl', video_pred)
             eval_policy = functools.partial(agent, training=False)
             tools.simulate(eval_policy, eval_envs, episodes=1)
+            logger.write()
         else:
             # TODO: offline evaluation
             pass
 
-        print('Start training.')
         if not config.offline_traindir:
-            state = tools.simulate(agent, train_envs, config.eval_every, state=state)
+            state, steps = tools.simulate(agent, train_envs, config.train_every, state=state)
+            agent.inc_step(steps)
+
         agent.train()
+        logger.write(fps=True)
 
         agent.save(logdir / 'variables.pkl')
 

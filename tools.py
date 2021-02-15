@@ -192,6 +192,7 @@ def simulate(agent, envs, steps=0, episodes=0, state=None):
         agent_state = None
     else:
         step, episode, done, length, obs, agent_state = state
+    init_step = step
     while (steps and step < steps) or (episodes and episode < episodes):
         # Reset envs if necessary.
         if done.any():
@@ -219,7 +220,7 @@ def simulate(agent, envs, steps=0, episodes=0, state=None):
         step += (done * length).sum()
         length *= (1 - done)
     # Return new state to allow resuming the simulation.
-    return (step - steps, episode - episodes, done, length, obs, agent_state)
+    return (step - steps, episode - episodes, done, length, obs, agent_state), step - init_step
 
 
 def save_episodes(directory, episodes):
