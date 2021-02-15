@@ -95,7 +95,6 @@ class Logger:
         self._scalars = {}
         self._images = {}
         self._videos = {}
-        self.step = step
 
     def scalar(self, name, value):
         self._scalars[name] = float(value)
@@ -106,20 +105,20 @@ class Logger:
     def video(self, name, value):
         self._videos[name] = np.array(value)
 
-    def write(self, fps=False):
+    def write(self, step, fps=False):
         scalars = list(self._scalars.items())
         if fps:
-            scalars.append(('fps', self._compute_fps(self.step)))
-        print(f'[{self.step}]', ' / '.join(f'{k} {v:.1f}' for k, v in scalars))
+            scalars.append(('fps', self._compute_fps(step)))
+        print(f'[{step}]', ' / '.join(f'{k} {v:.1f}' for k, v in scalars))
         with (self._logdir / 'metrics.jsonl').open('a') as f:
-            f.write(json.dumps({'step': self.step, ** dict(scalars)}) + '\n')
+            f.write(json.dumps({'step': step, ** dict(scalars)}) + '\n')
         with self._writer.as_default():
             for name, value in scalars:
-                tf.summary.scalar('scalars/' + name, value, self.step)
+                tf.summary.scalar('scalars/' + name, value, step)
             for name, value in self._images.items():
-                tf.summary.image(name, value, self.step)
+                tf.summary.image(name, value, step)
             for name, value in self._videos.items():
-                video_summary(name, value, self.step)
+                video_summary(name, value, step)
         self._writer.flush()
         self._scalars = {}
         self._images = {}

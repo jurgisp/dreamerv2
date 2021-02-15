@@ -39,7 +39,6 @@ class Dreamer(tools.Module):
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
             self._steps_trained = tf.Variable(0, dtype=tf.int64)
-        self._logger.step = self._step.numpy().item()
         # Schedules.
         config.actor_entropy = (
             lambda x=config.actor_entropy: tools.schedule(x, self._step))
@@ -66,7 +65,6 @@ class Dreamer(tools.Module):
 
     def inc_step(self, delta):
         self._step.assign_add(delta)
-        self._logger.step = self._step.numpy().item()
 
     @property
     def steps_trained(self):
@@ -242,9 +240,9 @@ def main(logdir, config):
     config.evaldir.mkdir(parents=True, exist_ok=True)
     logger = tools.Logger(logdir, 0)
 
-    print('Create envs.')
     if config.offline_traindir:
         directory = config.offline_traindir.format(**vars(config))
+        print(f'Load offline data from {directory} ...')
     else:
         directory = config.traindir
     train_eps = tools.load_episodes(directory, limit=config.dataset_size)
@@ -253,6 +251,8 @@ def main(logdir, config):
     else:
         directory = config.evaldir
     eval_eps = tools.load_episodes(directory, limit=1)
+
+    print('Create envs.')
     make = lambda mode: make_env(config, logger, mode, train_eps, eval_eps)
     train_envs = [make('train') for _ in range(config.envs)]
     eval_envs = [make('eval') for _ in range(config.envs)]
@@ -270,9 +270,9 @@ def main(logdir, config):
         print(f'Initial eval data prefill (1 episodes)...')
         tools.simulate(random_agent, eval_envs, episodes=1)
 
-    print('Create agent...')
     train_dataset = make_dataset(train_eps, config)
     eval_dataset = iter(make_dataset(eval_eps, config))
+    print('Create agent...')
     agent = Dreamer(config, logger, train_dataset)
     if (logdir / 'variables.pkl').exists():
         agent.load(logdir / 'variables.pkl')
@@ -290,7 +290,7 @@ def main(logdir, config):
                 logger.video('eval_openl', video_pred)
                 eval_policy = functools.partial(agent, training=False)
                 tools.simulate(eval_policy, eval_envs, episodes=1)
-                logger.write()
+                logger.write(agent.step)
             else:
                 # TODO: offline evaluation
                 pass
@@ -300,7 +300,9 @@ def main(logdir, config):
             agent.inc_step(steps)
 
         agent.train()
-        logger.write(fps=True)
+
+        log_step = agent.steps_trained if config.offline_traindir else agent.step
+        logger.write(log_step, fps=True)
 
         if should_save(agent.step):
             agent.save(logdir / 'variables.pkl')
