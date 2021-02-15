@@ -79,6 +79,7 @@ defaults:
   slow_target_update: 100
   slow_target_fraction: 1
   opt: 'adam'
+  wm_only: False
 
   # Behavior.
   discount: 0.99

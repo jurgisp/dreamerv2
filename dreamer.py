@@ -138,17 +138,26 @@ class Dreamer(tools.Module):
     def _train(self, data):
         print('Tracing train function.')
         metrics = {}
+
+        # Train world model
         embed, post, feat, kl, mets = self._wm.train(data)
         metrics.update(mets)
-        start = post
-        if 'discount' in self._config.grad_heads:  # Last step could be terminal.
-            start = {k: v[:, :-1] for k, v in post.items()}
-            embed, feat, kl = embed[:, :-1], feat[:, :-1], kl[:, :-1]
-        reward = lambda f, s, a: self._wm.heads['reward'](f).mode()
-        metrics.update(self._task_behavior.train(start, reward)[-1])
-        if self._config.expl_behavior != 'greedy':
-            mets = self._expl_behavior.train(start, feat, embed, kl)[-1]
-            metrics.update({'expl_' + key: value for key, value in mets.items()})
+
+        if not self._config.wm_only:
+            # Train behavior model
+            start = post
+            if 'discount' in self._config.grad_heads:  # Last step could be terminal.
+                start = {k: v[:, :-1] for k, v in post.items()}
+                embed, feat, kl = embed[:, :-1], feat[:, :-1], kl[:, :-1]
+            reward = lambda f, s, a: self._wm.heads['reward'](f).mode()
+            mets = self._task_behavior.train(start, reward)[-1]
+            metrics.update(mets)
+
+            # Train exploration
+            if self._config.expl_behavior != 'greedy':
+                mets = self._expl_behavior.train(start, feat, embed, kl)[-1]
+                metrics.update({'expl_' + key: value for key, value in mets.items()})
+
         for name, value in metrics.items():
             self._metrics[name].update_state(value)
 
