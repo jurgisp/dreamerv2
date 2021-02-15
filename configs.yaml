@@ -5,7 +5,7 @@ defaults:
   offline_traindir: ''
   offline_evaldir: ''
   seed: 0
-  steps: 1e7
+  steps: 5e6
   eval_every: 1e4
   gpu_growth: True
   precision: 32
@@ -19,7 +19,7 @@ defaults:
   num_actions:
   envs: 1
   action_repeat: 2
-  time_limit: 1000
+  time_limit: 500
   prefill: 2500
   eval_noise: 0.0
   clip_rewards: 'identity'
@@ -117,7 +117,7 @@ atari:
 
   # General
   task: 'atari_pong'
-  steps: 2e8
+  steps: 5e7
   eval_every: 1e5
   prefill: 50000
   dataset_size: 2e6
@@ -125,7 +125,7 @@ atari:
   precision: 16
 
   # Environment
-  time_limit: 108000  # 30 minutes of game play.
+  time_limit: 27000  # 30 minutes of game play.
   atari_grayscale: True
   action_repeat: 4
   eval_noise: 0.001
@@ -150,7 +150,7 @@ atari:
   actor_dist: 'onehot'
   actor_entropy: 'linear(3e-3,3e-4,2.5e6)'
   expl_amount: 0.0
-  expl_until: 3e7
+  expl_until: 8e6
   discount: 0.995
   imag_gradient: 'both'
   imag_gradient_mix: 'linear(0.1,0,2.5e6)'
@@ -170,14 +170,14 @@ dmc:
 
   # General
   task: 'dmc_walker_walk'
-  steps: 1e7
+  steps: 5e6
   eval_every: 1e4
   prefill: 2500
   dataset_size: 0
   pretrain: 100
 
   # Environment
-  time_limit: 1000
+  time_limit: 500
   action_repeat: 2
   train_every: 5
   train_steps: 1

@@ -34,12 +34,11 @@ class Dreamer(tools.Module):
         self._logger = logger
         self._float = prec.global_policy().compute_dtype
         self._should_pretrain = tools.Once()
-        self._should_expl = tools.Until(int(
-            config.expl_until / config.action_repeat))
+        self._should_expl = tools.Until(int(config.expl_until))
         self._metrics = collections.defaultdict(tf.metrics.Mean)
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
-        self._logger.step = self._config.action_repeat * self._step.numpy().item()
+        self._logger.step = self._step.numpy().item()
         # Schedules.
         config.actor_entropy = (
             lambda x=config.actor_entropy: tools.schedule(x, self._step))
@@ -69,7 +68,7 @@ class Dreamer(tools.Module):
 
     def inc_step(self, delta):
         self._step.assign_add(delta)
-        self._logger.step = self._config.action_repeat * self._step.numpy().item()
+        self._logger.step = self._step.numpy().item()
 
     @tf.function
     def _policy(self, obs, state, training):
@@ -211,9 +210,6 @@ def main(logdir, config):
     logdir = pathlib.Path(logdir).expanduser()
     config.traindir = config.traindir or logdir / 'train_eps'
     config.evaldir = config.evaldir or logdir / 'eval_eps'
-    config.steps //= config.action_repeat
-    config.eval_every //= config.action_repeat
-    config.time_limit //= config.action_repeat
     config.act = getattr(tf.nn, config.act)
 
     if config.debug:
@@ -278,12 +274,12 @@ def main(logdir, config):
             if not config.offline_evaldir:
                 video_pred = agent._wm.video_pred(next(eval_dataset))
                 logger.video('eval_openl', video_pred)
-            eval_policy = functools.partial(agent, training=False)
-            tools.simulate(eval_policy, eval_envs, episodes=1)
-            logger.write()
-        else:
-            # TODO: offline evaluation
-            pass
+                eval_policy = functools.partial(agent, training=False)
+                tools.simulate(eval_policy, eval_envs, episodes=1)
+                logger.write()
+            else:
+                # TODO: offline evaluation
+                pass
 
         if not config.offline_traindir:
             state, steps = tools.simulate(agent, train_envs, config.train_every, state=state)
@@ -292,7 +288,7 @@ def main(logdir, config):
         agent.train()
         logger.write(fps=True)
 
-        agent.save(logdir / 'variables.pkl')
+        # agent.save(logdir / 'variables.pkl')
 
     for env in train_envs + eval_envs:
         try:
