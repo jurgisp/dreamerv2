@@ -38,6 +38,7 @@ class Dreamer(tools.Module):
         self._metrics = collections.defaultdict(tf.metrics.Mean)
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
+            self._steps_trained = tf.Variable(0, dtype=tf.int64)
         self._logger.step = self._step.numpy().item()
         # Schedules.
         config.actor_entropy = (
@@ -59,16 +60,27 @@ class Dreamer(tools.Module):
         # Train step to initialize variables including optimizer statistics.
         self._train(next(self._dataset))
 
+    @property
+    def step(self):
+        return self._step.numpy().item()
+
+    def inc_step(self, delta):
+        self._step.assign_add(delta)
+        self._logger.step = self._step.numpy().item()
+
+    @property
+    def steps_trained(self):
+        return self._steps_trained.numpy().item()
+
+    def inc_steps_trained(self, delta):
+        self._steps_trained.assign_add(delta)
+
     def __call__(self, obs, reset, state=None, training=True):
         if state is not None and reset.any():
             mask = tf.cast(1 - reset, self._float)[:, None]
             state = tf.nest.map_structure(lambda x: x * mask, state)
         action, state = self._policy(obs, state, training)
         return action, state
-
-    def inc_step(self, delta):
-        self._step.assign_add(delta)
-        self._logger.step = self._step.numpy().item()
 
     @tf.function
     def _policy(self, obs, state, training):
@@ -116,11 +128,13 @@ class Dreamer(tools.Module):
             else self._config.train_steps)
         for _ in range(steps):
             self._train(next(self._dataset))
+            self.inc_steps_trained(self._config.batch_size * self._config.batch_length)
         for name, mean in self._metrics.items():
             self._logger.scalar(name, float(mean.result()))
             mean.reset_states()
         openl = self._wm.video_pred(next(self._dataset))
         self._logger.video('train_openl', openl)
+        self._logger.scalar('steps_trained', self.steps_trained)
 
     @tf.function
     def _train(self, data):
@@ -264,14 +278,13 @@ def main(logdir, config):
         agent.load(logdir / 'variables.pkl')
         agent._should_pretrain._once = False
 
-    print(f'Start training loop ({agent._step.numpy().item()}/{int(config.steps)} steps done)...')
+    print(f'Start training loop ({agent.step}/{int(config.steps)} steps done)...')
     should_eval = tools.Every(config.eval_every)
     should_save = tools.Every(config.save_every)
     state = None
-    while agent._step.numpy().item() < config.steps:
-        step = agent._step.numpy().item()
+    while agent.step < config.steps:
 
-        if should_eval(step):
+        if should_eval(agent.step):
             if not config.offline_evaldir:
                 video_pred = agent._wm.video_pred(next(eval_dataset))
                 logger.video('eval_openl', video_pred)
@@ -289,7 +302,7 @@ def main(logdir, config):
         agent.train()
         logger.write(fps=True)
 
-        if should_save(step):
+        if should_save(agent.step):
             agent.save(logdir / 'variables.pkl')
 
     print('Training finished.')
