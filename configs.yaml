@@ -62,8 +62,8 @@ defaults:
   # Training
   batch_size: 50
   batch_length: 50
-  train_every: 5
-  train_steps: 1
+  train_every: 1000
+  train_steps: 200
   pretrain: 0
   model_lr: 3e-4
   value_lr: 8e-5
@@ -131,8 +131,8 @@ atari:
   atari_grayscale: True
   action_repeat: 4
   eval_noise: 0.001
-  train_every: 16
-  train_steps: 1
+  train_every: 3200
+  train_steps: 200
   clip_rewards: 'tanh'
 
   # Model
@@ -181,8 +181,8 @@ dmc:
   # Environment
   time_limit: 500
   action_repeat: 2
-  train_every: 5
-  train_steps: 1
+  train_every: 1000
+  train_steps: 200
 
   # Model
   grad_heads: ['image', 'reward']
@@ -218,8 +218,7 @@ dmc:
 debug:
 
   debug: True
-  pretrain: 1
   prefill: 1
-  train_steps: 1
+  train_steps: 20
   batch_size: 10
   batch_length: 20
