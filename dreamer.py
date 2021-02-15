@@ -265,8 +265,9 @@ def main(logdir, config):
         agent._should_pretrain._once = False
 
     print(f'Start training loop ({agent._step.numpy().item()}/{int(config.steps)} steps done)...')
-    state = None
     should_eval = tools.Every(config.eval_every)
+    should_save = tools.Every(config.save_every)
+    state = None
     while agent._step.numpy().item() < config.steps:
         step = agent._step.numpy().item()
 
@@ -288,8 +289,10 @@ def main(logdir, config):
         agent.train()
         logger.write(fps=True)
 
-        # agent.save(logdir / 'variables.pkl')
+        if should_save(step):
+            agent.save(logdir / 'variables.pkl')
 
+    print('Training finished.')
     for env in train_envs + eval_envs:
         try:
             env.close()
