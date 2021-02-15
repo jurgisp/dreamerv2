@@ -121,9 +121,9 @@ class Dreamer(tools.Module):
         raise NotImplementedError(self._config.action_noise)
 
     def train(self):
-        steps = (
-            self._config.pretrain if self._should_pretrain()
-            else self._config.train_steps)
+        steps = self._config.train_steps
+        if self._should_pretrain():
+            steps += self._config.pretrain
         for _ in range(steps):
             self._train(next(self._dataset))
             self.inc_steps_trained(self._config.batch_size * self._config.batch_length)

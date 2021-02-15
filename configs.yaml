@@ -64,7 +64,7 @@ defaults:
   batch_length: 50
   train_every: 5
   train_steps: 1
-  pretrain: 100
+  pretrain: 0
   model_lr: 3e-4
   value_lr: 8e-5
   actor_lr: 8e-5
