@@ -5,6 +5,7 @@ import os
 import pathlib
 import sys
 import warnings
+import datetime
 
 warnings.filterwarnings('ignore', '.*box bound precision lowered.*')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -130,8 +131,9 @@ class Dreamer(tools.Module):
         for name, mean in self._metrics.items():
             self._logger.scalar(name, float(mean.result()))
             mean.reset_states()
-        openl = self._wm.video_pred(next(self._dataset))
-        self._logger.video('train_openl', openl)
+        if self._config.train_openl_gifs:
+            openl = self._wm.video_pred(next(self._dataset))
+            self._logger.video('train_openl', openl)
         self._logger.scalar('steps_trained', self.steps_trained)
 
     @tf.function
@@ -228,9 +230,10 @@ def process_episode(config, logger, mode, train_eps, eval_eps, episode):
 
 
 def main(logdir, config):
-    logdir = pathlib.Path(logdir).expanduser()
-    config.traindir = config.traindir or logdir / 'train_eps'
-    config.evaldir = config.evaldir or logdir / 'eval_eps'
+    config.start_time = datetime.datetime.now()
+    logdir = pathlib.Path(logdir.format(**vars(config))).expanduser()
+    config.traindir = pathlib.Path(config.traindir or logdir / 'train_eps')
+    config.evaldir = pathlib.Path(config.evaldir or logdir / 'eval_eps')
     config.act = getattr(tf.nn, config.act)
 
     if config.debug:
@@ -250,13 +253,14 @@ def main(logdir, config):
     logger = tools.Logger(logdir, 0)
 
     if config.offline_traindir:
-        directory = config.offline_traindir.format(**vars(config))
+        directory = pathlib.Path(config.offline_traindir.format(**vars(config)))
         print(f'Load offline data from {directory} ...')
     else:
         directory = config.traindir
     train_eps = tools.load_episodes(directory, limit=config.dataset_size)
+    print(f'Found data {count_steps(directory)} steps in {directory}.')
     if config.offline_evaldir:
-        directory = config.offline_evaldir.format(**vars(config))
+        directory = pathlib.Path(config.offline_evaldir.format(**vars(config)))
     else:
         directory = config.evaldir
     eval_eps = tools.load_episodes(directory, limit=1)
