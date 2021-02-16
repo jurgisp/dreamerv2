@@ -137,7 +137,7 @@ class Logger:
 
         # mlflow
         if self._log_mlflow:
-            mlflow.log_metrics({'_step': step, '_loss': scalars.get('loss_model', 0), **scalars})
+            mlflow.log_metrics({'_step': step, '_loss': scalars.get('loss_model', 0), **scalars}, step)
 
         self._scalars = {}
         self._images = {}
