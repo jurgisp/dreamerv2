@@ -57,11 +57,11 @@ class WorldModel(tools.Module):
             model_loss = kl_loss - sum(likes.values())
         model_parts = [self.encoder, self.dynamics] + list(self.heads.values())
         metrics = self._model_opt(model_tape, model_loss, model_parts)
-        metrics.update({f'{name}_loss': -like for name, like in likes.items()})
+        metrics.update({f'loss_{name}': -like for name, like in likes.items()})
         metrics['kl_balance'] = kl_balance
         metrics['kl_free'] = kl_free
         metrics['kl_scale'] = kl_scale
-        metrics['kl'] = tf.reduce_mean(kl_value)
+        metrics['loss_kl'] = tf.reduce_mean(kl_value)
         metrics['prior_ent'] = self.dynamics.get_dist(prior).entropy()
         metrics['post_ent'] = self.dynamics.get_dist(post).entropy()
         return embed, post, feat, kl_value, metrics

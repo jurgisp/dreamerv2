@@ -137,7 +137,7 @@ class Logger:
 
         # mlflow
         if self._log_mlflow:
-            mlflow.log_metrics({'_step': step, '_loss': scalars.get('model_loss', 0), **scalars})
+            mlflow.log_metrics({'_step': step, '_loss': scalars.get('loss_model', 0), **scalars})
 
         self._scalars = {}
         self._images = {}
@@ -515,8 +515,8 @@ class Optimizer(tf.Module):
             self._apply_weight_decay(varibs)
         self._opt.apply_gradients(zip(grads, varibs))
         metrics = {}
-        metrics[f'{self._name}_loss'] = loss
-        metrics[f'{self._name}_grad_norm'] = norm
+        metrics[f'loss_{self._name}'] = loss
+        metrics[f'grad_norm_{self._name}'] = norm
         if self._mixed:
             metrics[f'{self._name}_loss_scale'] = \
                 self._opt.loss_scale._current_loss_scale
