@@ -192,13 +192,13 @@ class ConvEncoder(tools.Module):
     def __call__(self, obs):
         kwargs = dict(strides=self._strides, activation=self._act)
         Conv = tfkl.Conv2D
-        x = tf.reshape(obs['image'], (-1,) + tuple(obs['image'].shape[-3:]))
+        x = tf.reshape(obs['image_input'], (-1,) + tuple(obs['image_input'].shape[-3:]))
         x = self.get('h1', Conv, 1 * self._depth, self._kernels[0], **kwargs)(x)
         x = self.get('h2', Conv, 2 * self._depth, self._kernels[1], **kwargs)(x)
         x = self.get('h3', Conv, 4 * self._depth, self._kernels[2], **kwargs)(x)
         x = self.get('h4', Conv, 8 * self._depth, self._kernels[3], **kwargs)(x)
         x = tf.reshape(x, [x.shape[0], np.prod(x.shape[1:])])
-        shape = tf.concat([tf.shape(obs['image'])[:-3], [x.shape[-1]]], 0)
+        shape = tf.concat([tf.shape(obs['image_input'])[:-3], [x.shape[-1]]], 0)
         return tf.reshape(x, shape)
 
 
@@ -206,13 +206,14 @@ class ConvDecoder(tools.Module):
 
     def __init__(
             self, depth=32, act=tf.nn.relu, shape=(64, 64, 3), kernels=(5, 5, 6, 6),
-            thin=True, strides=2):
+            thin=True, strides=2, discrete=0):
         self._act = act
         self._depth = depth
         self._shape = shape
         self._kernels = kernels
         self._thin = thin
         self._strides = strides
+        self._discrete = discrete
 
     def __call__(self, features, dtype=None):
         kwargs = dict(strides=self._strides, activation=self._act)
@@ -227,10 +228,13 @@ class ConvDecoder(tools.Module):
         x = self.get('h3', ConvT, 2 * self._depth, self._kernels[1], **kwargs)(x)
         x = self.get('h4', ConvT, 1 * self._depth, self._kernels[2], **kwargs)(x)
         x = self.get('h5', ConvT, self._shape[-1], self._kernels[3], strides=self._strides)(x)
-        mean = tf.reshape(x, tf.concat([tf.shape(features)[:-1], self._shape], 0))
+        x = tf.reshape(x, tf.concat([tf.shape(features)[:-1], self._shape], 0))
         if dtype:
-            mean = tf.cast(mean, dtype)
-        return tfd.Independent(tfd.Normal(mean, 1), len(self._shape))
+            x = tf.cast(x, dtype)
+        if not self._discrete:
+            return tfd.Independent(tfd.Normal(x, 1), 3)
+        else:
+            return tfd.Independent(tfd.Categorical(logits=x), 2)
 
 
 class DenseHead(tools.Module):

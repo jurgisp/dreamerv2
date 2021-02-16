@@ -18,11 +18,11 @@ class WorldModel(tools.Module):
             config.dyn_discrete, config.act, config.dyn_mean_act,
             config.dyn_std_act, config.dyn_min_std, config.dyn_cell)
         self.heads = {}
-        channels = (1 if config.atari_grayscale else config.channels)
-        shape = config.size + (channels,)
+        decoder_shape = config.size + (config.decoder_discrete or config.channels,)
         self.heads['image'] = networks.ConvDecoder(
-            config.cnn_depth, config.act, shape, config.decoder_kernels,
-            config.decoder_thin, config.decoder_strides)
+            config.cnn_depth, config.act, decoder_shape, config.decoder_kernels,
+            config.decoder_thin, config.decoder_strides,
+            config.decoder_discrete)
         self.heads['reward'] = networks.DenseHead(
             [], config.reward_layers, config.units, config.act)
         if 'discount' in config.grad_heads:
@@ -70,7 +70,14 @@ class WorldModel(tools.Module):
     def preprocess(self, obs):
         dtype = prec.global_policy().compute_dtype
         obs = obs.copy()
-        obs['image'] = tf.cast(obs['image'], dtype) / 255.0 - 0.5
+        if self._config.decoder_discrete:
+            assert obs['image'].dtype.is_integer
+            assert obs['image'].shape[-1] == 1
+            obs['image'] = tf.reshape(obs['image'], obs['image'].shape[:-1])
+            obs['image_input'] = tf.one_hot(obs['image'], self._config.decoder_discrete)
+        else:
+            obs['image'] = tf.cast(obs['image'], dtype) / 255.0 - 0.5
+            obs['image_input'] = obs['image']
         obs['reward'] = getattr(tf, self._config.clip_rewards)(obs['reward'])
         if 'discount' in obs:
             obs['discount'] *= self._config.discount
