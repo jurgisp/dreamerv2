@@ -250,7 +250,7 @@ def main(logdir, config):
     logdir.mkdir(parents=True, exist_ok=True)
     config.traindir.mkdir(parents=True, exist_ok=True)
     config.evaldir.mkdir(parents=True, exist_ok=True)
-    logger = tools.Logger(logdir, 0)
+    logger = tools.Logger(logdir, config.log_mlflow, config.run_name, vars(config))
 
     if config.offline_traindir:
         directory = pathlib.Path(config.offline_traindir.format(**vars(config)))

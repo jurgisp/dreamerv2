@@ -14,6 +14,7 @@ import tensorflow_probability as tfp
 from tensorflow.keras.mixed_precision import experimental as prec
 from tensorflow_probability import distributions as tfd
 
+import mlflow
 
 # Patch to ignore seed to avoid synchronization across GPUs.
 _orig_random_categorical = tf.random.categorical
@@ -87,14 +88,21 @@ def var_nest_names(nest):
 
 class Logger:
 
-    def __init__(self, logdir, step):
+    def __init__(self, logdir, log_mlflow=False, run_name=None, params={}):
         self._logdir = logdir
+        self._log_mlflow = log_mlflow
         self._writer = tf.summary.create_file_writer(str(logdir), max_queue=1000)
         self._last_step = None
         self._last_time = None
         self._scalars = {}
         self._images = {}
         self._videos = {}
+        if log_mlflow:
+            if run_name:
+                run_name = run_name.format(**params)
+            mlflow.start_run(run_name=run_name)
+            mlflow.log_params(dict(list(params.items())[:100]))  # Max 100 batch
+            mlflow.log_params(dict(list(params.items())[100:]))
 
     def scalar(self, name, value):
         self._scalars[name] = float(value)
@@ -106,20 +114,31 @@ class Logger:
         self._videos[name] = np.array(value)
 
     def write(self, step, fps=False):
-        scalars = list(self._scalars.items())
+        scalars = self._scalars
         if fps:
-            scalars.append(('fps', self._compute_fps(step)))
-        print(f'[{step}]', ' / '.join(f'{k} {v:.1f}' for k, v in scalars))
+            scalars['fps'] = self._compute_fps(step)
+
+        # console
+        print(f'[{step}]', ' / '.join(f'{k} {v:.1f}' for k, v in scalars.items()))
+
+        # json
         with (self._logdir / 'metrics.jsonl').open('a') as f:
-            f.write(json.dumps({'step': step, ** dict(scalars)}) + '\n')
+            f.write(json.dumps({'step': step, **scalars}) + '\n')
+
+        # tensorboard
         with self._writer.as_default():
-            for name, value in scalars:
+            for name, value in scalars.items():
                 tf.summary.scalar('scalars/' + name, value, step)
             for name, value in self._images.items():
                 tf.summary.image(name, value, step)
             for name, value in self._videos.items():
                 video_summary(name, value, step)
         self._writer.flush()
+
+        # mlflow
+        if self._log_mlflow:
+            mlflow.log_metrics({'_step': step, '_loss': scalars.get('model_loss', 0), **scalars})
+
         self._scalars = {}
         self._images = {}
         self._videos = {}

@@ -117,6 +117,10 @@ defaults:
   disag_layers: 4
   disag_units: 400
 
+  # Logging
+  log_mlflow: False
+  run_name:
+
 atari:
 
   # General
@@ -256,6 +260,11 @@ cpu:
 
   gpu_growth: False
   precision: 32
+
+mlflow:
+
+  log_mlflow: True
+  run_name: 'dreamerv2_{start_time:%Y%m%d_%H%M}'
 
 debug:
 
