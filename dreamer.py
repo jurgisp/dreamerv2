@@ -332,12 +332,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--configs', nargs='+', required=True)
     parser.add_argument('--logdir', required=True)
+    parser.add_argument('--extra_yaml')
     args, remaining = parser.parse_known_args()
-    configs = yaml.safe_load(
-        (pathlib.Path(__file__).parent / 'configs.yaml').read_text())
+
     config_ = {}
+    configs = yaml.safe_load((pathlib.Path(__file__).parent / 'configs.yaml').read_text())
+    if args.extra_yaml:
+        configs.update(yaml.safe_load((pathlib.Path(__file__).parent / args.extra_yaml).read_text()))
     for name in args.configs:
         config_.update(configs[name])
+
     parser = argparse.ArgumentParser()
     for key, value in config_.items():
         arg_type = tools.args_type(value)

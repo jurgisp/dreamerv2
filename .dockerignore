@@ -1,0 +1,7 @@
+.vscode/
+#data/
+kubernetes/
+log/
+mlruns/
+scores/
+*.ipynb

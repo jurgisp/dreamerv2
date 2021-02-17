@@ -5,6 +5,7 @@ __pycache__/
 MUJOCO_LOG.TXT
 
 log/
+data/
 mlruns/
 .DS_Store
 .vscode/
