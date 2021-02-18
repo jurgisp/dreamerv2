@@ -295,15 +295,16 @@ def main(logdir, config):
     should_eval = tools.Every(config.eval_every)
     should_save = tools.Every(config.save_every)
     state = None
-    while agent.step < config.steps:
+    log_step = 0
+    while log_step < config.steps:
 
-        if should_eval(agent.step):
+        if should_eval(log_step):
             if not config.offline_evaldir:
                 video_pred = agent._wm.video_pred(next(eval_dataset))
                 logger.video('eval_openl', video_pred)
                 eval_policy = functools.partial(agent, training=False)
                 tools.simulate(eval_policy, eval_envs, episodes=1)
-                logger.write(agent.step)
+                logger.write(log_step)
             else:
                 # TODO: offline evaluation
                 pass
@@ -317,7 +318,7 @@ def main(logdir, config):
         log_step = agent.steps_trained if config.offline_traindir else agent.step
         logger.write(log_step, fps=True)
 
-        if should_save(agent.step):
+        if should_save(log_step):
             agent.save(logdir / 'variables.pkl')
 
     print('Training finished.')
