@@ -166,14 +166,14 @@ class RSSM(tools.Module):
         dist = lambda x: self.get_dist(x, tf.float32)
         if balance == 0.5:
             # No stop gradient
-            value = kld(dist(prior), dist(post))
+            value = kld(dist(post), dist(prior))
             loss = tf.reduce_mean(tf.maximum(value, free))
         else:
             # 0.8*KL(prior,sg(posterior)) + 0.2*KL(sg(prior),posterior), so more gradient is flowing to prior
             sg = lambda x: tf.nest.map_structure(tf.stop_gradient, x)
-            value = kld(dist(prior), dist(sg(post)))
+            value = kld(dist(sg(post)), dist(prior))
             pri = tf.reduce_mean(value)
-            pos = tf.reduce_mean(kld(dist(sg(prior)), dist(post)))  # TODO: shouldn't it be kld(post,prior) ??
+            pos = tf.reduce_mean(dist(post)), kld(dist(sg(prior)))
             pri, pos = tf.maximum(pri, free), tf.maximum(pos, free)
             loss = balance * pri + (1 - balance) * pos
         loss *= scale
