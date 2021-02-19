@@ -39,7 +39,7 @@ class Dreamer(tools.Module):
         self._metrics = collections.defaultdict(tf.metrics.Mean)
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
-            self._steps_trained = tf.Variable(0, dtype=tf.int64)
+            self._batches_trained = tf.Variable(0, dtype=tf.int64)
         # Schedules.
         config.actor_entropy = (
             lambda x=config.actor_entropy: tools.schedule(x, self._step))
@@ -68,11 +68,11 @@ class Dreamer(tools.Module):
         self._step.assign_add(delta)
 
     @property
-    def steps_trained(self):
-        return self._steps_trained.numpy().item()
+    def batches_trained(self):
+        return self._batches_trained.numpy().item()
 
-    def inc_steps_trained(self, delta):
-        self._steps_trained.assign_add(delta)
+    def inc_batches_trained(self, delta):
+        self._batches_trained.assign_add(delta)
 
     def __call__(self, obs, reset, state=None, training=True):
         if state is not None and reset.any():
@@ -127,14 +127,14 @@ class Dreamer(tools.Module):
             steps += self._config.pretrain
         for _ in range(steps):
             self._train(next(self._dataset))
-            self.inc_steps_trained(self._config.batch_size * self._config.batch_length)
+            self.inc_batches_trained(1)
         for name, mean in self._metrics.items():
             self._logger.scalar(name, float(mean.result()))
             mean.reset_states()
         if self._config.train_openl_gifs:
             openl = self._wm.video_pred(next(self._dataset))
             self._logger.video('train_openl', openl)
-        self._logger.scalar('steps_trained', self.steps_trained)
+        self._logger.scalar('batches_trained', self.batches_trained)
 
     @tf.function
     def _train(self, data):
@@ -315,7 +315,7 @@ def main(logdir, config):
 
         agent.train()
 
-        log_step = agent.steps_trained if config.offline_traindir else agent.step
+        log_step = agent.batches_trained if config.offline_traindir else agent.step
         logger.write(log_step, fps=True)
 
         if should_save(log_step):

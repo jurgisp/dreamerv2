@@ -64,8 +64,8 @@ defaults:
   # Training
   batch_size: 50
   batch_length: 50
-  train_every: 1000
-  train_steps: 200
+  train_every: 1e4
+  train_steps: 2000
   pretrain: 0
   model_lr: 3e-4
   value_lr: 8e-5
@@ -139,8 +139,8 @@ atari:
   atari_grayscale: True
   action_repeat: 4
   eval_noise: 0.001
-  train_every: 3200
-  train_steps: 200
+  train_every: 1e4
+  train_steps: 600
   clip_rewards: 'tanh'
 
   # Model
@@ -189,8 +189,8 @@ dmc:
   # Environment
   time_limit: 500
   action_repeat: 2
-  train_every: 1000
-  train_steps: 200
+  train_every: 1e4
+  train_steps: 2000
 
   # Model
   grad_heads: ['image', 'reward']
@@ -225,7 +225,7 @@ dmc:
 
 minigrid:
 
-  task: 'atari_pong'  # Not used, only offline
+  task: 'atari_pong'  # Not used offline
   num_actions: 7
   action_repeat: 1
   actor_dist: 'onehot'
@@ -234,7 +234,8 @@ minigrid:
   # Training
   batch_size: 15
   batch_length: 15
-  train_steps: 45
+  train_every: 1e4  # Not used offline
+  train_steps: 500
   reward_scale: 0.0
 
   # Encoder/decoder
