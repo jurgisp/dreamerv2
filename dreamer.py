@@ -173,7 +173,7 @@ def make_dataset(episodes, config):
     types = {k: v.dtype for k, v in example.items()}
     shapes = {k: (None,) + v.shape[1:] for k, v in example.items()}
     generator = lambda: tools.sample_episodes(
-        episodes, config.batch_length, config.oversample_ends)
+        episodes, config.batch_length, config.oversample_ends, config.seed)
     dataset = tf.data.Dataset.from_generator(generator, types, shapes)
     dataset = dataset.batch(config.batch_size, drop_remainder=True)
     dataset = dataset.prefetch(10)
