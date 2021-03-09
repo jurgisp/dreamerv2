@@ -247,7 +247,7 @@ minigrid:
   encoder_strides: 1
   decoder_kernels: [3, 3, 3, 1]
   decoder_strides: 1
-  decoder_discrete: 33
+  decoder_discrete: 4  # Number of object categories (Maze has 4)
   cnn_depth: 32
 
   # Model

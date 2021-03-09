@@ -196,8 +196,9 @@ def make_env(config, logger, mode, train_eps, eval_eps):
     elif suite == 'minigrid':
         assert config.action_repeat == 1, "Do not use action_repeat for MiniGrid"
         # max_steps=time_limit+1, so that we use TimeLimit wrapper, not env max_steps
-        env = wrappers.MiniGrid(task, max_steps=config.time_limit+1)  
+        env = wrappers.MiniGrid(task, max_steps=config.time_limit + 1)
         env = wrappers.OneHotAction(env)
+        assert env.observation_space['image'].high.max() == config.decoder_discrete - 1, "Adjust decoder_discrete according to env"
     else:
         raise NotImplementedError(suite)
     env = wrappers.TimeLimit(env, config.time_limit)
