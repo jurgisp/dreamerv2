@@ -193,6 +193,11 @@ def make_env(config, logger, mode, train_eps, eval_eps):
             sticky_actions=True,
             all_actions=True)
         env = wrappers.OneHotAction(env)
+    elif suite == 'minigrid':
+        assert config.action_repeat == 1, "Do not use action_repeat for MiniGrid"
+        # max_steps=time_limit+1, so that we use TimeLimit wrapper, not env max_steps
+        env = wrappers.MiniGrid(task, max_steps=config.time_limit+1)  
+        env = wrappers.OneHotAction(env)
     else:
         raise NotImplementedError(suite)
     env = wrappers.TimeLimit(env, config.time_limit)

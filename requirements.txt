@@ -6,3 +6,5 @@ matplotlib
 ruamel.yaml
 gym[atari]
 mlflow
+
+#gym-minigrid

@@ -120,6 +120,38 @@ class Atari:
         return self._env.render(mode)
 
 
+class MiniGrid:
+
+    def __init__(self, name, max_steps):
+        import gym_minigrid
+        from gym_minigrid.wrappers import CategoricalObsWrapper, ConstantReward
+        env_id = f'MiniGrid-{name}-v0'
+        env = gym.make(env_id, max_steps=max_steps)
+        env = CategoricalObsWrapper(env, no_mission=True, restrict_types=None)
+        env = ConstantReward(env)
+        self._env = env
+
+    @property
+    def observation_space(self):
+        return self._env.observation_space
+
+    @property
+    def action_space(self):
+        return self._env.action_space
+
+    def close(self):
+        return self._env.close()
+
+    def reset(self):
+        return self._env.reset()
+
+    def step(self, action):
+        return self._env.step(action)
+
+    def render(self, mode):
+        raise NotImplementedError
+
+
 class CollectDataset:
 
     def __init__(self, env, callbacks=None, precision=32):

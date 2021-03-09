@@ -71,9 +71,9 @@ class WorldModel(tools.Module):
         dtype = prec.global_policy().compute_dtype
         obs = obs.copy()
         if self._config.decoder_discrete:
-            assert obs['image'].dtype.is_integer
             assert obs['image'].shape[-1] == 1
             obs['image'] = tf.reshape(obs['image'], obs['image'].shape[:-1])
+            assert obs['image'].dtype.is_integer
             obs['image_input'] = tf.one_hot(obs['image'], self._config.decoder_discrete)
         else:
             obs['image'] = tf.cast(obs['image'], dtype) / 255.0 - 0.5

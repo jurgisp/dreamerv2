@@ -225,16 +225,17 @@ dmc:
 
 minigrid:
 
-  task: 'atari_pong'  # Not used offline
+  task: 'minigrid_Maze'
   num_actions: 7
   action_repeat: 1
+  time_limit: 500
   actor_dist: 'onehot'
-  grad_heads: ['image']
+  grad_heads: ['image', 'reward']
 
   # Training
   batch_size: 15
   batch_length: 15
-  train_every: 1e4  # Not used offline
+  train_every: 2500
   train_steps: 500
   reward_scale: 0.0
 
