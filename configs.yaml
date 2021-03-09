@@ -231,14 +231,16 @@ minigrid:
   action_repeat: 1
   time_limit: 500
   actor_dist: 'onehot'
-  grad_heads: ['image', 'reward']
+  grad_heads: ['image', 'reward', 'discount']
 
   # Training
   batch_size: 15
   batch_length: 15
+  prefill: 50_000
   train_every: 2500
   train_steps: 500
-  reward_scale: 0.0
+  reward_scale: 1.0
+  oversample_ends: True
 
   # Encoder/decoder
   size: [7, 7]
@@ -258,6 +260,12 @@ minigrid:
   kl_scale: '1.0'
   kl_balance: '0.5'
   kl_free: '0.0'
+
+  # Behavior
+  actor_entropy: '1e-4'
+  expl_behavior: 'greedy'
+  imag_gradient: 'dynamics'
+  imag_horizon: 15
 
 cpu:
 

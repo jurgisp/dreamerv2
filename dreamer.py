@@ -96,7 +96,7 @@ class Dreamer(tools.Module):
             latent['stoch'] = latent['mean']
         feat = self._wm.dynamics.get_feat(latent)
         if not training:
-            action = self._task_behavior.actor(feat).mode()
+            action = self._task_behavior.actor(feat).mode()  # TODO: shouldn't this be .sample()? Optimal policy might be stochastic.
         elif self._should_expl(self._step):
             action = self._expl_behavior.actor(feat).sample()
         else:
