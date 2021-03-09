@@ -210,10 +210,13 @@ def make_env(config, logger, mode, train_eps, eval_eps):
 
 
 def process_episode(config, logger, mode, train_eps, eval_eps, episode):
+    length = len(episode['reward']) - 1
+    if length < config.batch_length:
+        print(f'Skipped short episode of length {length}.')
+        return
     directory = dict(train=config.traindir, eval=config.evaldir)[mode]
     cache = dict(train=train_eps, eval=eval_eps)[mode]
     filename = tools.save_episodes(directory, [episode])[0]
-    length = len(episode['reward']) - 1
     score = float(episode['reward'].astype(np.float64).sum())
     video = episode['image']
     if mode == 'eval':
