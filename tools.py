@@ -137,7 +137,11 @@ class Logger:
 
         # mlflow
         if self._log_mlflow:
-            mlflow.log_metrics({'_step': step, '_loss': scalars.get('loss_model', 0), **scalars}, step)
+            # The naming with _ prefix for main metrics is for more convenient mlflow browsing
+            scalars['_step'] = step
+            if 'loss_model' in scalars:
+                scalars['_loss'] = scalars['loss_model']
+            mlflow.log_metrics(scalars, step)
 
         self._scalars = {}
         self._images = {}
