@@ -318,6 +318,7 @@ def main(logdir, config):
         if not config.offline_traindir:
             state, steps = tools.simulate(agent, train_envs, config.train_every, state=state)
             agent.inc_step(steps)
+            logger.scalar('steps', agent.step)
 
         agent.train()
 
