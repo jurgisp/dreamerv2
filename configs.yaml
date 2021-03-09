@@ -13,6 +13,7 @@ defaults:
   debug: False
   expl_gifs: False
   train_openl_gifs: False
+  eval_openl_gifs: False
 
   # Environment
   task: 'dmc_walker_walk'

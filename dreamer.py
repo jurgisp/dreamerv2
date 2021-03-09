@@ -305,8 +305,9 @@ def main(logdir, config):
 
         if should_eval(log_step):
             if not config.offline_evaldir:
-                video_pred = agent._wm.video_pred(next(eval_dataset))
-                logger.video('eval_openl', video_pred)
+                if config.eval_openl_gifs:
+                    video_pred = agent._wm.video_pred(next(eval_dataset))
+                    logger.video('eval_openl', video_pred)
                 eval_policy = functools.partial(agent, training=False)
                 tools.simulate(eval_policy, eval_envs, episodes=1)
                 logger.write(log_step)
