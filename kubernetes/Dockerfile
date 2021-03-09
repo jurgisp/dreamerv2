@@ -7,8 +7,10 @@ RUN apt-get install -y libglu1-mesa-dev libgl1-mesa-dev libosmesa6-dev xvfb ffmp
 
 WORKDIR /app
 
+RUN pip3 install tensorflow==2.3.1 tensorflow_probability==0.11.1
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
+RUN pip3 install git+https://github.com/jurgisp/gym-minigrid.git#egg=gym-minigrid
 
 COPY . .
 
