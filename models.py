@@ -90,12 +90,12 @@ class WorldModel(tools.Module):
     @tf.function
     def video_pred(self, data):
         data = self.preprocess(data)
-        truth = data['image'][:6] + 0.5
+        truth = data['image'] + 0.5
         embed = self.encoder(data)
-        states, _ = self.dynamics.observe(embed[:6, :5], data['action'][:6, :5])
-        recon = self.heads['image'](self.dynamics.get_feat(states)).mode()[:6]
+        states, _ = self.dynamics.observe(embed[:, :5], data['action'][:, :5])
+        recon = self.heads['image'](self.dynamics.get_feat(states)).mode()
         init = {k: v[:, -1] for k, v in states.items()}
-        prior = self.dynamics.imagine(data['action'][:6, 5:], init)
+        prior = self.dynamics.imagine(data['action'][:, 5:], init)
         openl = self.heads['image'](self.dynamics.get_feat(prior)).mode()
         model = tf.concat([recon[:, :5] + 0.5, openl + 0.5], 1)
         error = (model - truth + 1) / 2

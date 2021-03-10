@@ -126,13 +126,15 @@ class Dreamer(tools.Module):
         if self._should_pretrain():
             steps += self._config.pretrain
         for _ in range(steps):
-            self._train(next(self._dataset))
+            data = next(self._dataset)
+            self._train(data)
             self.inc_batches_trained(1)
         for name, mean in self._metrics.items():
             self._logger.scalar(name, float(mean.result()))
             mean.reset_states()
         if self._config.train_openl_gifs:
-            openl = self._wm.video_pred(next(self._dataset))
+            data = {k: v[:1] for k, v in data.items()}  # Take one sequence from the batch
+            openl = self._wm.video_pred(data)
             self._logger.video('train_openl', openl)
         self._logger.scalar('batches_trained', self.batches_trained)
 
