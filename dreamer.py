@@ -231,8 +231,8 @@ def process_episode(config, logger, mode, train_eps, eval_eps, episode):
         logger.scalar('dataset_size', total + length)
     cache[str(filename)] = episode
     print(f'{mode.title()} episode has {length} steps and return {score:.1f}.')
-    logger.scalar(f'{mode}_return', score)
-    logger.scalar(f'{mode}_length', length)
+    logger.scalar_mean(f'{mode}_return', score)
+    logger.scalar_mean(f'{mode}_length', length)
     logger.scalar(f'{mode}_episodes', len(cache))
     if mode == 'eval' or config.expl_gifs:
         logger.video(f'{mode}_policy', video[None])

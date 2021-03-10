@@ -1,3 +1,4 @@
+from collections import defaultdict
 import datetime
 import io
 import json
@@ -95,6 +96,7 @@ class Logger:
         self._last_step = None
         self._last_time = None
         self._scalars = {}
+        self._scalars_mean = defaultdict(list)
         self._images = {}
         self._videos = {}
         if log_mlflow:
@@ -107,6 +109,9 @@ class Logger:
     def scalar(self, name, value):
         self._scalars[name] = float(value)
 
+    def scalar_mean(self, name, value):
+        self._scalars_mean[name].append(float(value))
+
     def image(self, name, value):
         self._images[name] = np.array(value)
 
@@ -115,6 +120,8 @@ class Logger:
 
     def write(self, step, fps=False):
         scalars = self._scalars
+        for name, values in self._scalars_mean.items():
+            scalars[name] = np.mean(values)
         if fps:
             scalars['fps'] = self._compute_fps(step)
 
@@ -144,6 +151,7 @@ class Logger:
             mlflow.log_metrics(scalars, step)
 
         self._scalars = {}
+        self._scalars_mean = defaultdict(list)
         self._images = {}
         self._videos = {}
 
