@@ -10,7 +10,7 @@ WORKDIR /app
 RUN pip3 install tensorflow==2.3.1 tensorflow_probability==0.11.1
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
-RUN pip3 install git+https://github.com/jurgisp/gym-minigrid.git#egg=gym-minigrid
+RUN pip3 install git+https://github.com/jurgisp/gym-minigrid.git@8a9682cd47d0dacc9a9441e56fd6478f0add2ff1#egg=gym-minigrid
 
 COPY . .
 

@@ -122,11 +122,12 @@ class Atari:
 
 class MiniGrid:
 
-    def __init__(self, name, max_steps, object_types=['basic']):
+    def __init__(self, name, max_steps, object_types=['basic', 'agent']):
         import gym_minigrid
-        from gym_minigrid.wrappers import CategoricalObsWrapper, ConstantReward
+        from gym_minigrid.wrappers import CategoricalObsWrapper, ConstantReward, FullyObsWrapper
         env_id = f'MiniGrid-{name}-v0'
         env = gym.make(env_id, max_steps=max_steps)
+        env = FullyObsWrapper(env)
         env = CategoricalObsWrapper(env, no_mission=True, restrict_types=object_types)
         env = ConstantReward(env)
         self._env = env
