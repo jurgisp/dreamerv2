@@ -240,13 +240,13 @@ class ConvDecoder(tools.Module):
 class DenseHead(tools.Module):
 
     def __init__(
-            self, shape, layers, units, act=tf.nn.elu, dist='normal', std=1.0):
+            self, shape, layers, units, act=tf.nn.elu, dist='normal', std=0.3989422804):
         self._shape = (shape,) if isinstance(shape, int) else shape
         self._layers = layers
         self._units = units
         self._act = act
         self._dist = dist
-        self._std = std
+        self._std = std  # std=0.3989=1/sqrt(2pi) makes log_prob(mean)==0.0
 
     def __call__(self, features, dtype=None):
         x = features
