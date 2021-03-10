@@ -70,6 +70,7 @@ class WorldModel(tools.Module):
     def preprocess(self, obs):
         dtype = prec.global_policy().compute_dtype
         obs = obs.copy()
+
         if self._config.decoder_discrete:
             assert obs['image'].shape[-1] == 1
             obs['image'] = tf.reshape(obs['image'], obs['image'].shape[:-1])
@@ -78,12 +79,19 @@ class WorldModel(tools.Module):
         else:
             obs['image'] = tf.cast(obs['image'], dtype) / 255.0 - 0.5
             obs['image_input'] = obs['image']
-        obs['reward'] = getattr(tf, self._config.clip_rewards)(obs['reward'])
+
+        clip_fn = getattr(tf, self._config.clip_rewards)
+        obs['reward'] = clip_fn(tf.cast(obs['reward'], dtype))
         if 'discount' in obs:
-            obs['discount'] *= self._config.discount
+            obs['discount'] *= self._config.discount  # TODO: how is this predicted with Bernoulli??
+
+        if self._config.input_reward:
+            img = obs['image_input']
+            rew = tools.expand_to_plane(obs['reward'], img.shape)
+            obs['image_input'] = tf.concat([img, rew], -1)
+
         for key, value in obs.items():
-            if tf.dtypes.as_dtype(value.dtype) in (
-                    tf.float16, tf.float32, tf.float64):
+            if tf.dtypes.as_dtype(value.dtype) in (tf.float16, tf.float32, tf.float64):
                 obs[key] = tf.cast(value, dtype)
         return obs
 

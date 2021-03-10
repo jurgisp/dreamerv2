@@ -723,3 +723,9 @@ def schedule(string, step):
             initial, final, halflife = [float(group) for group in match.groups()]
             return (initial - final) * 0.5 ** (step / halflife) + final
         raise NotImplementedError(string)
+
+
+def expand_to_plane(x, img_shape):
+    """Expands (B, T) to (B, T, H, W, 1)"""
+    x = tf.expand_dims(tf.expand_dims(tf.expand_dims(x, -1), -1), -1)
+    return tf.broadcast_to(x, img_shape[:-1] + (1,))
