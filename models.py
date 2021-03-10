@@ -187,6 +187,8 @@ class ImagBehavior(tools.Module):
             value_loss = tf.reduce_mean(weights[:-1] * value_loss)
         metrics['reward_mean'] = tf.reduce_mean(reward)
         metrics['reward_std'] = tf.math.reduce_std(reward)
+        metrics['value_mean'] = tf.reduce_mean(value[0].mean())
+        metrics['value_target_mean'] = tf.reduce_mean(target[0])
         metrics['actor_ent'] = tf.reduce_mean(actor_ent)
         metrics.update(self._actor_opt(actor_tape, actor_loss, [self.actor]))
         metrics.update(self._value_opt(value_tape, value_loss, [self.value]))
