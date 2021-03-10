@@ -101,6 +101,26 @@ class WorldModel(tools.Module):
         error = (model - truth + 1) / 2
         return tf.concat([truth, model, error], 2)
 
+    @tf.function
+    def data_pred(self, data):
+        """Make predictions for logging and debug purposes"""
+
+        pred = data.copy()
+        data = self.preprocess(data)
+        embed = self.encoder(data)
+
+        # Observe first 5 steps, imagine the rest
+        post, _ = self.dynamics.observe(embed[:, :5], data['action'][:, :5])
+        init = {k: v[:, -1] for k, v in post.items()}
+        prior = self.dynamics.imagine(data['action'][:, 5:], init)
+
+        # First 5 observations will be reconstructed from post, the rest predicted from prior
+        feat = tf.concat([self.dynamics.get_feat(post), self.dynamics.get_feat(prior)], 1)
+        for name, head in self.heads.items():
+            pred[name + '_pred'] = head(feat).mode()
+
+        return pred
+
 
 class ImagBehavior(tools.Module):
 
