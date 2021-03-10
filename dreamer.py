@@ -51,7 +51,7 @@ class Dreamer(tools.Module):
         self._wm = models.WorldModel(self._step, config)
         self._task_behavior = models.ImagBehavior(
             config, self._wm, config.behavior_stop_grad)
-        reward = lambda f, s, a: self._wm.heads['reward'](f).mode()
+        reward = lambda f, s, a: self._wm.heads['reward'](f).mean()
         self._expl_behavior = dict(
             greedy=lambda: self._task_behavior,
             random=lambda: expl.Random(config),
@@ -153,7 +153,7 @@ class Dreamer(tools.Module):
             if 'discount' in self._config.grad_heads:  # Last step could be terminal.
                 start = {k: v[:, :-1] for k, v in post.items()}
                 embed, feat, kl = embed[:, :-1], feat[:, :-1], kl[:, :-1]
-            reward = lambda f, s, a: self._wm.heads['reward'](f).mode()
+            reward = lambda f, s, a: self._wm.heads['reward'](f).mean()
             mets = self._task_behavior.train(start, reward)[-1]
             metrics.update(mets)
 

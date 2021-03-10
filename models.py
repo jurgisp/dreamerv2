@@ -24,7 +24,7 @@ class WorldModel(tools.Module):
             config.decoder_thin, config.decoder_strides,
             config.decoder_discrete)
         self.heads['reward'] = networks.DenseHead(
-            [], config.reward_layers, config.units, config.act)
+            [], config.reward_layers, config.units, config.act, dist='binary' if config.discrete_rewards else 'normal')
         if 'discount' in config.grad_heads:
             self.heads['discount'] = networks.DenseHead(
                 [], config.discount_layers, config.units, config.act, dist='binary')

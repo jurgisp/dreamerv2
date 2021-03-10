@@ -27,6 +27,7 @@ defaults:
   prefill: 2500
   eval_noise: 0.0
   clip_rewards: 'identity'
+  discrete_rewards: False
   atari_grayscale: False
 
   # Model
@@ -233,6 +234,7 @@ minigrid:
   time_limit: 500
   actor_dist: 'onehot'
   grad_heads: ['image', 'reward', 'discount']
+  discrete_rewards: True
 
   # Training
   batch_size: 15
