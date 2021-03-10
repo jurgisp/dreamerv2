@@ -82,8 +82,6 @@ class WorldModel(tools.Module):
 
         clip_fn = getattr(tf, self._config.clip_rewards)
         obs['reward'] = clip_fn(tf.cast(obs['reward'], dtype))
-        if 'discount' in obs:
-            obs['discount'] *= self._config.discount  # TODO: how is this predicted with Bernoulli??
 
         if self._config.input_reward:
             img = obs['image_input']
@@ -225,7 +223,7 @@ class ImagBehavior(tools.Module):
     def _compute_target(self, imag_feat, reward, actor_ent, state_ent, slow):
         reward = tf.cast(reward, tf.float32)
         if 'discount' in self._world_model.heads:
-            discount = self._world_model.heads['discount'](
+            discount = self._config.discount * self._world_model.heads['discount'](
                 imag_feat, tf.float32).mean()
         else:
             discount = self._config.discount * tf.ones_like(reward)
