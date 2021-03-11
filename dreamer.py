@@ -25,6 +25,7 @@ sys.path.append(str(pathlib.Path(__file__).parent))
 import exploration as expl
 import models
 import tools
+import loggers
 import wrappers
 
 
@@ -36,6 +37,7 @@ class Dreamer(tools.Module):
         self._float = prec.global_policy().compute_dtype
         self._should_pretrain = tools.Once()
         self._should_expl = tools.Until(int(config.expl_until))
+        self._should_log_sample = tools.Every(config.log_sample_every)
         self._metrics = collections.defaultdict(tf.metrics.Mean)
         with tf.device('cpu:0'):
             self._step = tf.Variable(count_steps(config.traindir), dtype=tf.int64)
@@ -132,10 +134,15 @@ class Dreamer(tools.Module):
         for name, mean in self._metrics.items():
             self._logger.scalar(name, float(mean.result()))
             mean.reset_states()
+
+        data_sample = {k: v[:6] for k, v in data.items()}
         if self._config.train_openl_gifs:
-            data = {k: v[:1] for k, v in data.items()}  # Take one sequence from the batch
-            openl = self._wm.video_pred(data)
+            openl = self._wm.video_pred(data_sample)
             self._logger.video('train_openl', openl)
+        if self._should_log_sample(self.batches_trained):
+            data_pred = self.data_pred(data_sample)
+            self._logger.data_dict('data_sample', data_pred)
+
         self._logger.scalar('batches_trained', self.batches_trained)
 
     @tf.function
@@ -164,6 +171,39 @@ class Dreamer(tools.Module):
 
         for name, value in metrics.items():
             self._metrics[name].update_state(value)
+
+    @tf.function
+    def data_pred(self, data):
+        """Make predictions for logging and debug purposes"""
+        wm = self._wm
+        behav = self._task_behavior
+
+        pred = data.copy()
+        data = wm.preprocess(data)
+        embed = wm.encoder(data)
+
+        # Observe first 5 steps, imagine the rest
+        post, _ = wm.dynamics.observe(embed[:, :5], data['action'][:, :5])
+        init = {k: v[:, -1] for k, v in post.items()}
+        prior = wm.dynamics.imagine(data['action'][:, 5:], init)
+
+        # First 5 observations will be reconstructed from post, the rest predicted from prior
+        feat = tf.concat([wm.dynamics.get_feat(post), wm.dynamics.get_feat(prior)], 1)
+        for name, head in wm.heads.items():
+            if name in ['reward', 'discount']:
+                pred[name + '_pred'] = head(feat).mean()
+            else:
+                pred[name + '_pred'] = head(feat).mode()
+
+        swap = lambda x: tf.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        rewards = pred['reward_pred']
+        target, weights, slow_value = behav._compute_target(swap(feat), swap(rewards), 0, 0, self._config.slow_value_target)
+        target = tf.concat([target, slow_value[-1:]], axis=0)  # Target is only (T-1) long, append last value target for information
+        pred['value_target'] = swap(target)
+        pred['value_weights'] = swap(weights)
+        pred['value'] = behav.value(feat).mean()
+
+        return pred
 
 
 def count_steps(folder):
@@ -261,7 +301,7 @@ def main(logdir, config):
     logdir.mkdir(parents=True, exist_ok=True)
     config.traindir.mkdir(parents=True, exist_ok=True)
     config.evaldir.mkdir(parents=True, exist_ok=True)
-    logger = tools.Logger(logdir, config.log_mlflow, config.run_name, vars(config))
+    logger = loggers.Logger(logdir, config.log_mlflow, config.run_name, vars(config))
 
     if config.offline_traindir:
         directory = pathlib.Path(config.offline_traindir.format(**vars(config)))

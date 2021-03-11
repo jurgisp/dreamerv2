@@ -2,16 +2,18 @@ from collections import defaultdict
 import datetime
 import io
 import json
-import pathlib
+from pathlib import Path
 import pickle
 import re
 import time
 import uuid
+import tempfile
 
 import numpy as np
-import tensorflow.compat.v1 as tf1
 import tensorflow as tf
 import mlflow
+
+import tools
 
 
 class Logger:
@@ -26,6 +28,7 @@ class Logger:
         self._scalars_mean = defaultdict(list)
         self._images = {}
         self._videos = {}
+        self._datas = {}
         if log_mlflow:
             if run_name:
                 run_name = run_name.format(**params)
@@ -44,6 +47,9 @@ class Logger:
 
     def video(self, name, value):
         self._videos[name] = np.array(value)
+
+    def data_dict(self, name, value):
+        self._datas[name] = {k: np.array(v) for k, v in value.items()}
 
     def write(self, step, fps=False):
         scalars = self._scalars
@@ -77,10 +83,14 @@ class Logger:
                 scalars['_loss'] = scalars['loss_model']
             mlflow.log_metrics(scalars, step)
 
+            for name, value in self._datas.items():
+                mlflow_log_npz(value, f'{step:07}.npz', name)
+
         self._scalars = {}
         self._scalars_mean = defaultdict(list)
         self._images = {}
         self._videos = {}
+        self._datas = {}
 
     def _compute_fps(self, step):
         if self._last_step is None:
@@ -103,6 +113,7 @@ def graph_summary(writer, step, fn, *args):
 
 
 def video_summary(name, video, step=None, fps=20):
+    import tensorflow.compat.v1 as tf1
     name = name if isinstance(name, str) else name.decode('utf-8')
     if np.issubdtype(video.dtype, np.floating):
         video = np.clip(255 * video, 0, 255).astype(np.uint8)
@@ -137,3 +148,9 @@ def encode_gif(frames, fps):
         raise IOError('\n'.join([' '.join(cmd), err.decode('utf8')]))
     del proc
     return out
+
+def mlflow_log_npz(data, filename, subdir=None):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = Path(tmpdir) / filename
+        tools.save_npz(data, filepath)
+        mlflow.log_artifact(filepath, artifact_path=subdir)

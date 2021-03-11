@@ -107,26 +107,6 @@ class WorldModel(tools.Module):
         error = (model - truth + 1) / 2
         return tf.concat([truth, model, error], 2)
 
-    @tf.function
-    def data_pred(self, data):
-        """Make predictions for logging and debug purposes"""
-
-        pred = data.copy()
-        data = self.preprocess(data)
-        embed = self.encoder(data)
-
-        # Observe first 5 steps, imagine the rest
-        post, _ = self.dynamics.observe(embed[:, :5], data['action'][:, :5])
-        init = {k: v[:, -1] for k, v in post.items()}
-        prior = self.dynamics.imagine(data['action'][:, 5:], init)
-
-        # First 5 observations will be reconstructed from post, the rest predicted from prior
-        feat = tf.concat([self.dynamics.get_feat(post), self.dynamics.get_feat(prior)], 1)
-        for name, head in self.heads.items():
-            pred[name + '_pred'] = head(feat).mode()
-
-        return pred
-
 
 class ImagBehavior(tools.Module):
 
@@ -168,7 +148,7 @@ class ImagBehavior(tools.Module):
             actor_ent = self.actor(imag_feat, tf.float32).entropy()
             state_ent = self._world_model.dynamics.get_dist(
                 imag_state, tf.float32).entropy()
-            target, weights = self._compute_target(
+            target, weights, _ = self._compute_target(
                 imag_feat, reward, actor_ent, state_ent,
                 self._config.slow_actor_target)
             actor_loss, mets = self._compute_actor_loss(
@@ -176,7 +156,7 @@ class ImagBehavior(tools.Module):
                 weights)
             metrics.update(mets)
         if self._config.slow_value_target != self._config.slow_actor_target:
-            target, weights = self._compute_target(
+            target, weights, _ = self._compute_target(
                 imag_feat, reward, actor_ent, state_ent,
                 self._config.slow_value_target)
         with tf.GradientTape() as value_tape:
@@ -244,7 +224,7 @@ class ImagBehavior(tools.Module):
             bootstrap=value[-1], lambda_=self._config.discount_lambda, axis=0)
         weights = tf.stop_gradient(tf.math.cumprod(tf.concat(
             [tf.ones_like(discount[:1]), discount[:-1]], 0), 0))
-        return target, weights
+        return target, weights, value
 
     def _compute_actor_loss(
             self, imag_feat, imag_state, imag_action, target, actor_ent, state_ent,

@@ -82,7 +82,6 @@ def var_nest_names(nest):
     return '?'
 
 
-
 def simulate(agent, envs, steps=0, episodes=0, state=None):
     # Initialize or unpack simulation state.
     if state is None:
@@ -133,11 +132,7 @@ def save_episodes(directory, episodes):
         identifier = str(uuid.uuid4().hex)
         length = len(episode['reward'])
         filename = directory / f'{timestamp}-{identifier}-{length}.npz'
-        with io.BytesIO() as f1:
-            np.savez_compressed(f1, **episode)
-            f1.seek(0)
-            with filename.open('wb') as f2:
-                f2.write(f1.read())
+        save_npz(episode, filename)
         filenames.append(filename)
     return filenames
 
@@ -166,9 +161,7 @@ def load_episodes(directory, limit=None):
     total = 0
     for filename in reversed(sorted(directory.glob('*.npz'))):
         try:
-            with filename.open('rb') as f:
-                episode = np.load(f)
-                episode = {k: episode[k] for k in episode.keys()}
+            episode = load_npz(filename)
         except Exception as e:
             print(f'Could not load episode: {e}')
             continue
@@ -177,6 +170,21 @@ def load_episodes(directory, limit=None):
         if limit and total >= limit:
             break
     return episodes
+
+
+def save_npz(data, filename):
+    with io.BytesIO() as f1:
+        np.savez_compressed(f1, **data)
+        f1.seek(0)
+        with filename.open('wb') as f2:
+            f2.write(f1.read())
+
+
+def load_npz(filename):
+    with filename.open('rb') as f:
+        episode = np.load(f)
+        episode = {k: episode[k] for k in episode.keys()}
+    return episode
 
 
 class DtypeDist:

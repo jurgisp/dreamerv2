@@ -14,6 +14,7 @@ defaults:
   expl_gifs: False
   train_openl_gifs: False
   eval_openl_gifs: False
+  log_sample_every: 0
 
   # Environment
   task: 'dmc_walker_walk'
@@ -275,11 +276,6 @@ cpu:
 
   gpu_growth: False
   precision: 32
-
-mlflow:
-
-  log_mlflow: True
-  run_name: 'dreamerv2_{start_time:%Y%m%d_%H%M}'
 
 debug:
 
